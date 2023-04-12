@@ -1,43 +1,26 @@
-import openpyxl
-from openpyxl import load_workbook
-from openpyxl.styles import Color, PatternFill, Font, GradientFill, Alignment
-from openpyxl.utils import get_column_letter
+from sklearn.cluster import KMeans
+import numpy as np
 
-# Load the workbook
-wb = load_workbook('example.xlsx')
+# Load data
+X = np.loadtxt("data.csv", delimiter=",")
 
-# Select the sheet
-sheet = wb.active
+# Try different values of k
+k_values = range(2, 11)
+bic_scores = []
 
-# Get the min and max values for each feature column
-feature_cols = [col for col in sheet.iter_cols(min_row=1, max_row=1)]
-for col in feature_cols:
-    values = [cell.value for cell in col[1:]]
-    col_min = min(values)
-    col_max = max(values)
+for k in k_values:
+    # Fit KMeans model
+    model = KMeans(n_clusters=k).fit(X)
     
-    # Define the color scale
-    red = Color(rgb='FF0000')
-    yellow = Color(rgb='FFFF00')
-    green = Color(rgb='00FF00')
-    scale = GradientFill(stop=[ 
-        GradientStop(position=0, color=red), 
-        GradientStop(position=0.5, color=yellow), 
-        GradientStop(position=1, color=green) 
-    ])
-
-    # Color code each cell in the column based on its value
-    for cell in col:
-        if cell.row == 1:
-            continue  # Skip the header row
-        value = cell.value
-        if value == col_min:
-            cell.fill = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid')
-        elif value == col_max:
-            cell.fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
-        else:
-            position = (value - col_min) / (col_max - col_min)
-            cell.fill = scale[position]
-
-# Save the workbook
-wb.save('example_colored.xlsx')
+    # Calculate SSE
+    sse = np.sum(np.min(model.transform(X), axis=1) ** 2)
+    
+    # Calculate BIC score
+    n = X.shape[0]
+    k_params = 2 * k
+    bic = n * np.log(sse / n) + k_params * np.log(n)
+    bic_scores.append(bic)
+    
+# Print BIC scores for different values of k
+for k, bic in zip(k_values, bic_scores):
+    print(f"k={k}: BIC={bic}")
